@@ -137,27 +137,19 @@ abstract class Core
 	 */
 	public static function generateDatabase()
 	{
-		//Only Entity class can call this method
-		if(get_called_class() == 'EntityPHP\Entity')
-		{
-			$entities	=	self::getEntities();
-			$query		=	self::$current_db->query('SHOW TABLES');
-			$tables		=	array();
+		$entities	=	self::getEntities();
+		$query		=	self::$current_db->query('SHOW TABLES');
+		$tables		=	array();
 
-			while($table = $query->fetch(\PDO::FETCH_NUM))
-				$tables[]	=	strtolower($table[0]);
+		while($table = $query->fetch(\PDO::FETCH_NUM))
+			$tables[]	=	strtolower($table[0]);
 
-			foreach($entities as $entity)
-			{
-				if( ! in_array(strtolower($entity::getTableName()), $tables))
-					$entity::createTable();
-				else
-					$entity::updateTable();
-			}
-		}
-		else
+		foreach($entities as $entity)
 		{
-			throw new \Exception('Only Entity class can call "createDatabase()".');
+			if( ! in_array(strtolower($entity::getTableName()), $tables))
+				$entity::createTable();
+			else
+				$entity::updateTable();
 		}
 	}
 
