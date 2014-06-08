@@ -3,18 +3,18 @@
 //Include the ORM
 require '../src/EntityPHP.php';
 
-//Create a class representation of the table "Characters"
 class Characters extends \EntityPHP\Entity
 {
 	protected $firstname;
+	protected $lastname;
 	protected $age;
 
-	//__structure() method is mandatory and must return an array
 	public static function __structure()
 	{
 		return array(
 			'firstname'	=>	'VARCHAR(255)',
-			'age'		=>	'INT(11)',
+			'lastname'	=>	'VARCHAR(255)',
+			'age'		=>	'INT(10)',
 		);
 	}
 }
@@ -22,14 +22,19 @@ class Characters extends \EntityPHP\Entity
 //Init connection to the database
 \EntityPHP\Core::connectToDB('localhost', 'entityphp', '3n7i7iPHP', 'entityphp');
 
-//Generate the database (this method should be execute only once)
-\EntityPHP\Core::generateDatabase();
-
 //Create a new character by setting its properties
-$character	=	new Characters(array(
-	'firstname'	=>	'John',
-	'age'		=>	20,
-));
+$myCharacter	=	Characters::getById(1);
 
-//And store it to our table!
-Characters::add($character);
+if( ! empty($myCharacter))
+{
+	$myCharacter->setProps(array(
+			'firstname'	=>	'Théo',
+			'lastname'	=>	'Bligé',
+		));
+
+	Characters::update($myCharacter);
+}
+else
+{
+	echo 'The user to update is not found.';
+}

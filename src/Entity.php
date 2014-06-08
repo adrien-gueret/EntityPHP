@@ -141,7 +141,10 @@ abstract class Entity implements iEntity
 					if(count($this->$field) == 0 && ! $update)
 						$this->load($field);
 
-					$array = is_array($this->$field) ? $this->$field : $this->$field->getArray();
+					if(empty($this->$field))
+						$array	=	array();
+					else
+						$array = is_array($this->$field) ? $this->$field : $this->$field->getArray();
 
 					foreach($array as $key => $obj)
 					{
@@ -160,7 +163,8 @@ abstract class Entity implements iEntity
 					if($update)
 						$foreignSQL[]	=	'DELETE FROM '.$tableName.'2'.$field.' WHERE id_'.$tableName.'='.$newId;
 
-					$foreignSQL[]	=	'INSERT INTO '.$tableName.'2'.$field.' (id_'.$tableName.',id_'.$field.') VALUES '.implode(',', $temp);
+					if( ! empty($temp))
+						$foreignSQL[]	=	'INSERT INTO '.$tableName.'2'.$field.' (id_'.$tableName.',id_'.$field.') VALUES '.implode(',', $temp);
 
 					break;
 			}
@@ -467,7 +471,7 @@ abstract class Entity implements iEntity
 	{
 		$idName	=	static::getIdName();
 
-		return $this->$idName ?: -1;
+		return isset($this->$idName) ? $this->$idName : -1;
 	}
 
 	/**
@@ -605,7 +609,7 @@ abstract class Entity implements iEntity
 	 * @access public
 	 * @param string $prop The property to load
 	 * @param string $orderBy In case of Many 2 Many property, define how to order the collection
-	 * @return Entity The called Entity
+	 * @return mixed The loaded property
 	 * @throws \Exception
 	 */
 	final public function load($prop, $orderBy = '')
@@ -635,7 +639,7 @@ abstract class Entity implements iEntity
 				{
 					$request	=	static::createRequest()
 										->select($prop)
-										->where(static::getIdName().'=?',array($this->getId()));
+										->where(static::getIdName().'=?', array($this->getId()));
 
 					if( ! empty($orderBy))
 						$request->orderBy($orderBy);
@@ -643,7 +647,7 @@ abstract class Entity implements iEntity
 					$this->$prop	=	$request->exec();
 				}
 
-				return $this;
+				return $this->$prop;
 			}
 			throw new \Exception('Entity::load(String $prop) : Property "'.$prop.'" from "'.$className.'" is not referencing to object(s).');
 		}
@@ -794,6 +798,7 @@ abstract class Entity implements iEntity
 		if($className != 'EntityPHP\Entity')
 		{
 			$tableName		=	$className::getTableName();
+			$id_name		=	$className::getIdName();
 			$sql_request	=	null;
 			$foreignSQL		=	array();
 
@@ -806,10 +811,7 @@ abstract class Entity implements iEntity
 					if(!$sql_request)
 						$sql_request	=	'INSERT INTO '.$tableName.' ('.implode(',',$sql['fields']).') VALUES ';
 
-
 					$sql_request	.=	'('.implode(',',$sql['values']).'),';
-
-					$foreignSQL	=	array_merge($foreignSQL, $sql['foreign']);
 				}
 				else
 					throw new \Exception('Entity::addMultiple(Array $list) -> an object in given $list is not an instance of this class.');
@@ -817,14 +819,25 @@ abstract class Entity implements iEntity
 
 			Core::$current_db->exec(substr($sql_request, 0, -1));
 
+			$instances	=	$className::createRequest()
+								->orderBy($id_name.' DESC')
+								->getOnly(count($list))
+								->exec()
+								->reverse();
+
+			foreach($instances as $index => $instance)
+			{
+				$list[$index]->$id_name	=	$instance->getId();
+
+				//We can generate FK requests here since we have correct ids only now
+				$sql		=	$list[$index]->prepareDataForSQL(true);
+				$foreignSQL	=	array_merge($foreignSQL, $sql['foreign']);
+			}
+
 			foreach($foreignSQL as $request)
 				Core::$current_db->exec($request);
 
-			return $className::createRequest()
-						->orderBy($className::getIdName().' DESC')
-						->getOnly(count($list))
-						->exec()
-						->reverse();
+			return $instances;
 		}
 
 		throw new \Exception('Entity::addMultiple(Array $list) -> Only a subclass of Entity can call this method.');
