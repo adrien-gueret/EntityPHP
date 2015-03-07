@@ -49,13 +49,8 @@ final class EntityRequest
 	{
 		if( ! in_array($table, $this->joinedTables))
 		{
-			if($table === $this->tableName)
-			{
-				$this->propertiesAsTableAlias[]	=	$property;
-				$table_alias					=	$property;
-			}
-			else
-				$table_alias	=	$table;
+			$this->propertiesAsTableAlias[]	=	$property;
+			$table_alias					=	$property;
 
 			$originTable	=	empty($originTable) ? $this->tableName : $originTable;
 
@@ -174,8 +169,9 @@ final class EntityRequest
 						return $this->analyzeProperty($className, implode('.', $fields), $type, (!empty($parentProp) ? $parentProp.'.' : '').$prop);
 					else //We want to select ALL properties of the contained Entity
 					{
-						if($type == 'select')
+						if($type == 'select') {
 							$this->generateSelectAll($className, $prop, true);
+						}
 						else
 							throw new \Exception('EntityRequest::'.$errorMethod.' : "'.$targetClassName.'.'.$prop.'" can\'t be used for this method.');
 					}
