@@ -72,6 +72,11 @@ abstract class Entity implements iEntity
 					$fieldsSQL[]	=	$field;
 					$format			=	null;
 
+					if(empty($this->$field)) {
+						$valuesSQL[]	=	'NULL';
+						break;
+					}
+
 					switch($php_type)
 					{
 						case Core::TYPE_TIME:		$format	=	'H:i:s'; break;
