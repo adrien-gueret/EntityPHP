@@ -286,7 +286,7 @@ final class EntityRequest
 		{
 			if(substr_count($props,'?') == count($values))
 			{
-				$keywords	=	array('IS', 'NULL', 'AND','OR','BETWEEN','IN','\(','\)','!=','<=','>=','<','>','=','\*','\+','-','/',',');
+				$keywords	=	array('IS', 'NOT', 'NULL', 'AND','OR','BETWEEN','IN','\(','\)','!=','<=','>=','<','>','=','\*','\+','-','/',',');
 
 				$props		=	str_replace(' ','',trim($props));
 				$props		=	preg_replace('#('.implode('|',$keywords).')#sU',' $1 ',$props);
