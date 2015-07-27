@@ -275,7 +275,12 @@ abstract class Entity implements iEntity
 
 			$sql	=	substr($sql, 0, -2).') '.(Core::$current_db_is_utf8 ? 'DEFAULT CHARSET=utf8 ' : '').'ENGINE=InnoDB';
 
-			Core::$current_db->exec($sql);
+			$affected = Core::$current_db->exec($sql);
+			if($affected === false)
+			{
+				$error = Core::$current_db->errorInfo();
+				throw new \Exception('Error while creating table ' . $tableName . ': ' . $error[2]);
+			}
 
 			foreach($foreign_sql_reqs as $request)
 				Core::$current_db->exec($request);
