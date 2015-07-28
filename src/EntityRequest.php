@@ -153,7 +153,7 @@ final class EntityRequest
 				case Core::TYPE_ARRAY:
 					$className	=	current($sql_type);
 
-					if(!is_subclass_of($className,'EntityPHP\Entity'))
+					if( ! is_subclass_of($className,'EntityPHP\Entity'))
 						throw new \Exception('EntityRequest::'.$errorMethod.' : "'.$targetClassName.'.'.$prop.'" is not a subclass of Entity.');
 
 					$otherTableName	=	$className::getTableName();
@@ -284,7 +284,7 @@ final class EntityRequest
 			$this->where	=	'1=1';
 		else
 		{
-			if(substr_count($props,'?') == count($values))
+			if(substr_count($props,'?') === count($values))
 			{
 				$keywords	=	array('IS', 'NOT', 'NULL', 'AND','OR','BETWEEN','IN','\(','\)','!=','<=','>=','<','>','=','\*','\+','-','/',',');
 
@@ -297,12 +297,12 @@ final class EntityRequest
 				{
 					$elem	=	trim($elem);
 
-					if(!in_array($elem,$keywords) && $elem!='(' && $elem !=')' && $elem !='*' && $elem !='+' && strlen($elem)>0)
+					if( ! in_array($elem,$keywords) && $elem!='(' && $elem !=')' && $elem !='*' && $elem !='+' && strlen($elem)>0)
 					{
 						if($elem == '?')
 						{
 							$value	=	$values[$indexData++];
-							if(!is_numeric($value))
+							if( ! is_numeric($value))
 								$value	=	'"'.htmlspecialchars($value,ENT_QUOTES,Core::$current_db_is_utf8 ? 'UTF-8' : 'ISO-8859-1').'"';
 
 							$props[$key]	=	$value;
@@ -418,14 +418,14 @@ final class EntityRequest
 	 */
 	public function getSQLRequest()
 	{
-		if($this->select == '*')
+		if($this->select === '*')
 		{
 			$this->select	=	'';
 			$this->generateSelectAll($this->fetchClassName);
 			$this->select	=	substr($this->select,1);
 		}
 
-		if($this->orderBy == 1)
+		if($this->orderBy === 1)
 			$this->orderBy	=	$this->tableName.'.'.$this->idName;
 
 		return 'SELECT '.$this->select.' FROM '.$this->tableName.$this->join.' WHERE '.$this->where.' ORDER BY '.$this->orderBy.$this->limit.';';
@@ -444,7 +444,7 @@ final class EntityRequest
 
 		if($query)
 		{
-			if($query->rowCount()>0)
+			if($query->rowCount() > 0)
 			{
 				if($this->canFetchClass)
 					$query->setFetchMode(\PDO::FETCH_CLASS|\PDO::FETCH_PROPS_LATE, $this->fetchClassName);
