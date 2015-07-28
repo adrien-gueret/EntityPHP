@@ -74,10 +74,75 @@ abstract class Core
 	final public static function getEntities()
 	{
 		$entities	=	array();
+		$classDependencies = array();
 
 		foreach(get_declared_classes() as $class)
 			if(is_subclass_of($class,'EntityPHP\Entity'))
-				$entities[]	=	$class;
+			{
+				$classDependencies[$class] = $class::getDependencies();
+			}
+
+		$nbOfClasses = count($classDependencies);
+		$maxIterations = $nbOfClasses * $nbOfClasses;
+		$iteration = 0;
+
+		// Try to order entities according to their dependencies
+		while(count($entities) < $nbOfClasses)
+		{
+			$iteration++;
+
+			// We failed to find a correct order, give up
+			if($iteration > $maxIterations)
+			{
+				// Try and find circular dependencies
+				$circularDependencies = array();
+
+				foreach($classDependencies as $class => $dependencies)
+				{
+					// Already added, can't be the cause
+					if(in_array($class, $entities))
+						continue;
+
+					// Check each dependency of the current class to see if it has the current class as a dependency
+					foreach($dependencies as $dependency)
+					{
+						if(in_array($class, $classDependencies[$dependency]))
+						{
+							$circularDependencies[] = $class . ' -> ' . $dependency;
+						}
+					}
+				}
+
+				throw new \Exception('Failed to establish dependencies list. The following circular dependencies were found: ' . implode(' & ', $circularDependencies));
+			}
+
+			foreach($classDependencies as $class => $dependencies)
+			{
+				// Entity was already added
+				if(in_array($class, $entities))
+					continue;
+
+				// No dependencies
+				if(count($dependencies) === 0)
+				{
+					$entities[] = $class;
+					continue;
+				}
+
+				// Check if all dependencies are fulfilled
+				$fulfilled = true;
+				foreach($dependencies as $dependency)
+				{
+					if(!in_array($dependency, $entities))
+						$fulfilled = false;
+				}
+
+				if($fulfilled)
+				{
+					$entities[] = $class;
+				}
+			}
+		}
 
 		return $entities;
 	}

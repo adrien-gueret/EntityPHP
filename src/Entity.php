@@ -227,6 +227,45 @@ abstract class Entity implements iEntity
 	}
 
 	/**
+	 * Get the Entities this Entity depends on
+	 * @access public
+	 * @static
+	 */
+	final public static function getDependencies()
+	{
+		$className	=	get_called_class();
+
+		//Prevision for the future when we'll handle Entity inheritance
+		if(get_parent_class($className) === 'EntityPHP\Entity')
+		{
+			$fields = static::__structure();
+			$dependencies = [];
+
+			foreach($fields as $field)
+			{
+				// Check if the field is another Entity
+				switch(Core::getPHPType($field))
+				{
+					case Core::TYPE_CLASS:
+						$dependencies[] = $field;
+						break;
+
+					case Core::TYPE_ARRAY:
+						foreach ($field as $className)
+						{
+							$dependencies[] = $className;
+						}
+						break;
+				}
+			}
+
+			return $dependencies;
+		}
+		else
+			throw new \Exception('Only direct subclasses of Entity can call "getDependencies()".');
+	}
+
+	/**
 	 * Check if the SQL table corresponding to the Entity class exists
 	 * @access public
 	 * @static
