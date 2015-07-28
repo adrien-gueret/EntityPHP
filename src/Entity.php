@@ -143,7 +143,7 @@ abstract class Entity implements iEntity
 
 					$temp	=	array();
 
-					if(count($this->$field) == 0 && ! $update)
+					if(count($this->$field) === 0 && ! $update)
 						$this->load($field);
 
 					if(empty($this->$field))
@@ -238,8 +238,8 @@ abstract class Entity implements iEntity
 		//Prevision for the future when we'll handle Entity inheritance
 		if(get_parent_class($className) === 'EntityPHP\Entity')
 		{
-			$fields = static::__structure();
-			$dependencies = [];
+			$fields         =   static::__structure();
+			$dependencies   =   array();
 
 			foreach($fields as $field)
 			{
@@ -280,7 +280,7 @@ abstract class Entity implements iEntity
 			$tableName	=	$className::getTableName();
 
 			$query	=	Core::$current_db->query('SELECT DISTINCT table_name FROM information_schema.statistics WHERE table_name = "' . $tableName . '"');
-			return $query->rowCount()>0;
+			return $query->rowCount() > 0;
 		}
 		else
 			throw new \Exception('Only direct subclasses of Entity can call "tableExists()".');
@@ -321,7 +321,7 @@ abstract class Entity implements iEntity
 						break;
 
 					case Core::TYPE_ARRAY:
-						$otherClassName	=	current($sql_type);
+						$otherClassName		=	current($sql_type);
 						$foreign_sql_reqs[]	=	Core::generateRequestForForeignFields($tableName, $otherClassName::getTableName(), $idName, $otherClassName::getIdName(), $field_name);
 						break;
 
@@ -522,7 +522,7 @@ abstract class Entity implements iEntity
 
 			$query	=	Core::$current_db->query('SELECT DISTINCT table_name FROM information_schema.statistics WHERE index_name LIKE "$'.$tableName.'2%" OR index_name LIKE "%2'.$tableName.'" OR index_name LIKE "fk_'.$tableName.'_%"');
 
-			if($query->rowCount()>0)
+			if($query->rowCount() > 0)
 				while($donnees = $query->fetch(\PDO::FETCH_NUM))
 					Core::$current_db->exec('DROP TABLE '.$donnees[0]);
 
@@ -552,7 +552,7 @@ abstract class Entity implements iEntity
 	final public function existsInDB()
 	{
 		$query	=	Core::$current_db->query('SELECT NULL FROM '.static::getTableName().' WHERE '.static::getIdName().'='.$this->getId());
-		return $query->rowCount()>0;
+		return $query->rowCount() > 0;
 	}
 
 	/**
@@ -565,7 +565,7 @@ abstract class Entity implements iEntity
 	final public static function idExistsInDB($id)
 	{
 		$query	=	Core::$current_db->query('SELECT NULL FROM '.static::getTableName().' WHERE '.static::getIdName().'='.intval($id));
-		return $query->rowCount()>0;
+		return $query->rowCount() > 0;
 	}
 
 	/**
@@ -610,7 +610,7 @@ abstract class Entity implements iEntity
 	 */
 	final public static function getByIds(Array $ids)
 	{
-		if(get_called_class()!='EntityPHP\Entity')
+		if(get_called_class() !== 'EntityPHP\Entity')
 		{
 			$where	=	null;
 
@@ -636,7 +636,7 @@ abstract class Entity implements iEntity
 	{
 		$entity	=	get_called_class();
 
-		if($entity != 'EntityPHP\Entity')
+		if($entity !== 'EntityPHP\Entity')
 			return self::createRequest()->exec();
 
 		throw new \Exception('Entity::getAll() -> Only a subclass of Entity can call this method.');
@@ -794,7 +794,7 @@ abstract class Entity implements iEntity
 	final public static function count($where = null, Array $values = array())
 	{
 		$entity	=	get_called_class();
-		if($entity != 'EntityPHP\Entity')
+		if($entity !== 'EntityPHP\Entity')
 		{
 			//No filter, simpler way of process
 			if(empty($where))
@@ -866,7 +866,7 @@ abstract class Entity implements iEntity
 	{
 		$className	=	get_called_class();
 
-		if($className != 'EntityPHP\Entity')
+		if($className !== 'EntityPHP\Entity')
 		{
 			$tableName		=	$className::getTableName();
 			$id_name		=	$className::getIdName();
@@ -879,7 +879,7 @@ abstract class Entity implements iEntity
 				{
 					$sql	=	$instance->prepareDataForSQL();
 
-					if(!$sql_request)
+					if( ! $sql_request)
 						$sql_request	=	'INSERT INTO '.$tableName.' ('.implode(',',$sql['fields']).') VALUES ';
 
 					$sql_request	.=	'('.implode(',',$sql['values']).'),';
@@ -925,7 +925,7 @@ abstract class Entity implements iEntity
 	final public static function update(Entity $obj)
 	{
 		$className	=	get_called_class();
-		if($className != 'EntityPHP\Entity')
+		if($className !== 'EntityPHP\Entity')
 		{
 			if($obj instanceof $className)
 			{
@@ -934,7 +934,7 @@ abstract class Entity implements iEntity
 				$objId		=	intval($obj->getId());
 				$query		=	Core::$current_db->query('SELECT '.$idName.' FROM '.$tableName.' WHERE '.$idName.'='.$objId);
 
-				if($query->rowCount()>0)
+				if($query->rowCount() > 0)
 				{
 					$sql	=	$obj->prepareDataForSQL(true);
 					$set	=	array();
@@ -966,7 +966,7 @@ abstract class Entity implements iEntity
 	final public static function delete(Entity $obj)
 	{
 		$className	=	get_called_class();
-		if($className != 'EntityPHP\Entity')
+		if($className !== 'EntityPHP\Entity')
 		{
 			if($obj instanceof $className)
 				static::deleteById($obj->getId());
@@ -988,7 +988,7 @@ abstract class Entity implements iEntity
 	{
 		$className	=	get_called_class();
 
-		if($className != 'EntityPHP\Entity')
+		if($className !== 'EntityPHP\Entity')
 		{
 			$tableName	=	$className::getTableName();
 			$idName		=	$className::getIdName();
@@ -1015,7 +1015,7 @@ abstract class Entity implements iEntity
 	{
 		$className	=	get_called_class();
 
-		if($className != 'EntityPHP\Entity')
+		if($className !== 'EntityPHP\Entity')
 		{
 			$tableName	=	$className::getTableName();
 			$idName		=	$className::getIdName();
@@ -1028,7 +1028,7 @@ abstract class Entity implements iEntity
 					$instanceId	=	intval($instance->getId());
 					$query		=	Core::$current_db->query('SELECT '.$idName.' FROM '.$tableName.' WHERE '.$idName.'='.$instanceId);
 
-					if($query->rowCount()>0)
+					if($query->rowCount() > 0)
 						$ids[]	=	$instanceId;
 					else
 						throw new \Exception('Entity::deleteMultiple(EntityArray $list) -> an object in given $list seems to not exist in the DB.');

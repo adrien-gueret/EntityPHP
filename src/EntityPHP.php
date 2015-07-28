@@ -73,8 +73,8 @@ abstract class Core
 	 */
 	final public static function getEntities()
 	{
-		$entities	=	array();
-		$classDependencies = array();
+		$entities           =   array();
+		$classDependencies  =   array();
 
 		foreach(get_declared_classes() as $class)
 			if(is_subclass_of($class,'EntityPHP\Entity'))
@@ -82,9 +82,9 @@ abstract class Core
 				$classDependencies[$class] = $class::getDependencies();
 			}
 
-		$nbOfClasses = count($classDependencies);
-		$maxIterations = $nbOfClasses * $nbOfClasses;
-		$iteration = 0;
+		$nbOfClasses    =   count($classDependencies);
+		$maxIterations  =   $nbOfClasses * $nbOfClasses;
+		$iteration      =   0;
 
 		// Try to order entities according to their dependencies
 		while(count($entities) < $nbOfClasses)
@@ -133,7 +133,7 @@ abstract class Core
 				$fulfilled = true;
 				foreach($dependencies as $dependency)
 				{
-					if(!in_array($dependency, $entities))
+					if( ! in_array($dependency, $entities))
 						$fulfilled = false;
 				}
 
