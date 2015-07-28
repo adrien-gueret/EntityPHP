@@ -227,6 +227,27 @@ abstract class Entity implements iEntity
 	}
 
 	/**
+	 * Check if the SQL table corresponding to the Entity class exists
+	 * @access public
+	 * @static
+	 */
+	final public static function tableExists()
+	{
+		$className	=	get_called_class();
+
+		//Prevision for the future when we'll handle Entity inheritance
+		if(get_parent_class($className) === 'EntityPHP\Entity')
+		{
+			$tableName	=	$className::getTableName();
+
+			$query	=	Core::$current_db->query('SELECT DISTINCT table_name FROM information_schema.statistics WHERE table_name = "' . $tableName . '"');
+			return $query->rowCount()>0;
+		}
+		else
+			throw new \Exception('Only direct subclasses of Entity can call "tableExists()".');
+	}
+
+	/**
 	 * Create the SQL table of the Entity class which calls this method
 	 * @access public
 	 * @static
