@@ -251,15 +251,19 @@ abstract class Entity implements iEntity
 						break;
 
 					case Core::TYPE_ARRAY:
-						foreach ($field as $className)
+						foreach ($field as $key => $value)
 						{
-							$dependencies[] = $className;
+							// Check if it's an associative array
+							if(is_int($key))
+								$dependencies[] = $value;
+							else
+								$dependencies[] = $key;
 						}
 						break;
 				}
 			}
 
-			return $dependencies;
+			return array_unique($dependencies);
 		}
 		else
 			throw new \Exception('Only direct subclasses of Entity can call "getDependencies()".');
@@ -323,6 +327,13 @@ abstract class Entity implements iEntity
 					case Core::TYPE_ARRAY:
 						$otherClassName		=	current($sql_type);
 						$foreign_sql_reqs[]	=	Core::generateRequestForForeignFields($tableName, $otherClassName::getTableName(), $idName, $otherClassName::getIdName(), $field_name);
+						break;
+
+					case Core::TYPE_ASSOC_ARRAY:
+						$otherClassName			=	key($sql_type);
+						$supplementaryFields	=	current($sql_type);
+
+						$foreign_sql_reqs[]	=	Core::generateRequestForForeignFields($tableName, $otherClassName::getTableName(), $idName, $otherClassName::getIdName(), $field_name, $supplementaryFields);
 						break;
 
 					default:
@@ -422,7 +433,6 @@ abstract class Entity implements iEntity
 					switch($php_type)
 					{
 						case Core::TYPE_CLASS:
-
 							$otherTableName	=	$sql_type::getTableName();
 							$otherIdName	=	$sql_type::getIdName();
 
@@ -433,21 +443,21 @@ abstract class Entity implements iEntity
 							break;
 
 						case Core::TYPE_ARRAY:
-
 							$otherClassName		=	current($sql_type);
 							$otherTableName 	=	$otherClassName::getTableName();
 							$otherIdName		=	$otherClassName::getIdName();
 
-							$new_foreign		=	'CREATE TABLE '.$tableName.'2'.$field_name.' (id_'.$tableName;
-							$new_foreign		.=	' INT(11) UNSIGNED NOT NULL, id_'.$field_name.' INT(11)';
-							$new_foreign		.=	' UNSIGNED NOT NULL,CONSTRAINT FOREIGN KEY fk_'.$tableName;
-							$new_foreign		.=	'2'.$field_name.'_'.$tableName.'$'.$tableName.'2'.$otherTableName;
-							$new_foreign		.=	' (id_'.$tableName.') REFERENCES '.$tableName.'('.$idName.') ON DELETE';
-							$new_foreign		.=	' CASCADE, CONSTRAINT FOREIGN KEY fk_'.$tableName.'2'.$field_name.'_';
-							$new_foreign		.=	$field_name.'$'.$tableName.'2'.$otherTableName.' (id_'.$field_name.')';
-							$new_foreign		.=	' REFERENCES '.$otherTableName.'('.$otherIdName.') ON DELETE CASCADE) ';
-							$new_foreign		.=	(Core::$current_db_is_utf8 ? 'DEFAULT CHARSET=utf8 ' : '').'ENGINE=InnoDB';
-							$foreign_sql_reqs[]	=	$new_foreign;
+							$foreign_sql_reqs[]	=	Core::generateRequestForForeignFields($tableName, $otherTableName, $idName, $otherIdName, $field_name);
+
+							break;
+
+						case Core::TYPE_ASSOC_ARRAY:
+							$otherClassName			=	key($sql_type);
+							$supplementaryFields 	=	current($sql_type);
+							$otherTableName 		=	$otherClassName::getTableName();
+							$otherIdName			=	$otherClassName::getIdName();
+
+							$foreign_sql_reqs[]		=	Core::generateRequestForForeignFields($tableName, $otherTableName, $idName, $otherIdName, $field_name, $supplementaryFields);
 
 							break;
 
@@ -463,7 +473,6 @@ abstract class Entity implements iEntity
 					switch($php_type)
 					{
 						case Core::TYPE_CLASS:
-
 							$otherTableName	=	$sql_type::getTableName();
 							$otherIdName	=	$sql_type::getIdName();
 
@@ -474,12 +483,21 @@ abstract class Entity implements iEntity
 							break;
 
 						case Core::TYPE_ARRAY:
-
 							$otherClassName		=	current($sql_type);
 							$otherTableName 	=	$otherClassName::getTableName();
 							$otherIdName		=	$otherClassName::getIdName();
 
 							$foreign_sql_reqs[]	=	Core::generateRequestForForeignFields($tableName, $otherTableName, $idName, $otherIdName, $field_name);
+
+							break;
+
+						case Core::TYPE_ASSOC_ARRAY:
+							$otherClassName			=	key($sql_type);
+							$supplementaryFields	=	current($sql_type);
+							$otherTableName 		=	$otherClassName::getTableName();
+							$otherIdName			=	$otherClassName::getIdName();
+
+							$foreign_sql_reqs[]	=	Core::generateRequestForForeignFields($tableName, $otherTableName, $idName, $otherIdName, $field_name, $supplementaryFields);
 
 							break;
 

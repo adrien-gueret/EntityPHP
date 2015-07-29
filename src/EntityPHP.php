@@ -19,7 +19,8 @@ abstract class Core
 			TYPE_TIME			=	'time',
 			TYPE_YEAR			=	'year',
 			TYPE_CLASS			=	'class',
-			TYPE_ARRAY			=	'array';
+			TYPE_ARRAY			=	'array',
+			TYPE_ASSOC_ARRAY	=	'associative_array';
 
 	protected static $all_dbs			=	array();
 	public static $current_db			=	null;
@@ -157,7 +158,13 @@ abstract class Core
 	final public static function getPHPType($sqlType)
 	{
 		if(is_array($sqlType))
-			return self::TYPE_ARRAY;
+		{
+			// Check if it's an associative array
+			if(empty($sqlType) || is_int(key($sqlType)))
+				return self::TYPE_ARRAY;
+			else
+				return self::TYPE_ASSOC_ARRAY;
+		}
 
 		if((class_exists($sqlType) || class_exists('\\'.$sqlType)) && is_subclass_of($sqlType, 'EntityPHP\Entity'))
 			return self::TYPE_CLASS;
@@ -218,10 +225,23 @@ abstract class Core
 		}
 	}
 
-	final public static function generateRequestForForeignFields($tableName, $refTableName, $idName, $refIdName, $field)
+	final public static function generateRequestForForeignFields($tableName, $refTableName, $idName, $refIdName, $field, $supplementaryFields = array())
 	{
+		// Check if we need to add supplementary fields
+		$supplementaryFieldsSql = "";
+
+		if( ! empty($supplementaryFields) )
+		{
+			foreach($supplementaryFields as $field_name => $sql_type)
+			{
+				$php_type	=	Core::getPHPType($sql_type);
+				$supplementaryFieldsSql	.=	$field_name.' '.$sql_type.', ';
+			}
+		}
+
 		$request	=	'CREATE TABLE '.$tableName.'2'.$field.' (id_'.$tableName.' INT(11) UNSIGNED NOT NULL,';
-		$request	.=	'id_'.$field.' INT(11) UNSIGNED NOT NULL,CONSTRAINT FOREIGN KEY fk_'.$tableName.'2'.$field;
+		$request	.=	'id_'.$field.' INT(11) UNSIGNED NOT NULL, '.$supplementaryFieldsSql;
+		$request 	.=	'CONSTRAINT FOREIGN KEY fk_'.$tableName.'2'.$field;
 		$request	.=	'_'.$tableName.'$'.$tableName.'2'.$refTableName.' (id_'.$tableName.')  REFERENCES '.$tableName;
 		$request	.=	'('.$idName.') ON DELETE CASCADE, CONSTRAINT FOREIGN KEY fk_'.$tableName.'2'.$field.'_'.$field.'$';
 		$request	.=	$tableName.'2'.$refTableName.' (id_'.$field.') REFERENCES '.$refTableName.'('.$refIdName.') ON DELETE CASCADE) ';
