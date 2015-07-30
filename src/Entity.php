@@ -305,8 +305,6 @@ abstract class Entity implements iEntity
 		{
 			$tableName		=	$className::getTableName();
 
-			echo "Checking $tableName $field_name\n";
-
 			$query	=	Core::$current_db->query('SELECT DISTINCT table_name FROM information_schema.statistics WHERE table_name = "'.$tableName.'2'.$field_name.'"');
 			return $query->rowCount() > 0;
 		}
@@ -451,8 +449,9 @@ abstract class Entity implements iEntity
 			{
 				$php_type	=	Core::getPHPType($sql_type);
 
-				//If the class property is not in the SQL definition, we'll add it
-				if( ! isset($tableFields[$field_name]))
+				// If the class property is not in the SQL definition, we'll add it
+				// Arrays can't be part of the definition since they are defined as other tables
+				if( ! isset($tableFields[$field_name]) && $php_type != Core::TYPE_ARRAY && $php_type != Core::TYPE_ASSOC_ARRAY)
 				{
 					switch($php_type)
 					{
@@ -465,33 +464,93 @@ abstract class Entity implements iEntity
 							$change			=	true;
 
 							break;
-
-						case Core::TYPE_ARRAY:
-							$otherClassName		=	current($sql_type);
-							$otherTableName 	=	$otherClassName::getTableName();
-							$otherIdName		=	$otherClassName::getIdName();
-
-							$foreign_sql_reqs[]	=	Core::generateRequestForForeignFields($tableName, $otherTableName, $idName, $otherIdName, $field_name);
-
-							break;
-
-						case Core::TYPE_ASSOC_ARRAY:
-							$otherClassName			=	key($sql_type);
-							$supplementaryFields 	=	current($sql_type);
-							$otherTableName 		=	$otherClassName::getTableName();
-							$otherIdName			=	$otherClassName::getIdName();
-
-							$foreign_sql_reqs[]		=	Core::generateRequestForForeignFields($tableName, $otherTableName, $idName, $otherIdName, $field_name, $supplementaryFields);
-
-							break;
-
 						default:
 							$sql	.=	'ADD '.$field_name.' '.$sql_type.',';
 							$change	=	true;
 							break;
 					}
 				}
-				//Field is already present: we check its SQL type!
+				// Field is an array; we check for the corresponding junction table
+				else if($php_type == Core::TYPE_ARRAY || $php_type == Core::TYPE_ASSOC_ARRAY)
+				{
+					// Check if the table exists
+					if(static::junctionTableExists($field_name))
+					{
+						$changeJunction	=	false;
+						$sqlJunction	=	'';
+
+						// Get the SQL structure
+						$queryJunctionField		=	Core::$current_db->query('SHOW COLUMNS FROM '.$tableName.'2'.$field_name);
+						$junctionTableFields	=	array();
+
+						$junctionClassFields = current($sql_type);
+
+						// Get each field from SQL structure
+						foreach($queryJunctionField->fetchAll(\PDO::FETCH_ASSOC) as $junctionField)
+						{
+							// Ignore ID fields since they can't change
+							if(substr($junctionField['Field'], 0, 3) !== 'id_')
+							{
+								// Delete fields that are no longer part of the class definition
+								if($php_type == Core::TYPE_ARRAY || ! isset($junctionClassFields[$junctionField['Field']]) )
+								{
+									$sqlJunction	.=	'DROP '.$junctionField['Field'].',';
+									$changeJunction	=	true;
+								}
+								else
+								{
+									$junctionTableFields[$junctionField['Field']]	=	trim(strtoupper($junctionField['Type']));
+								}
+							}
+						}
+
+						// Check that each field exists and is the right type
+						if($php_type == Core::TYPE_ASSOC_ARRAY)
+						{
+							foreach(current($sql_type) as $junctionClassFieldName => $junctionClassFieldType)
+							{
+								// The field does not exist, we'll add it
+								if( ! isset($junctionTableFields[$junctionClassFieldName]))
+								{
+									$sqlJunction	.=	'ADD '.$junctionClassFieldName.' '.$junctionClassFieldType.',';
+									$changeJunction	=	true;
+								}
+								// The field is of the wrong type, we'll change it
+								else if(str_replace('"', '\'', strtoupper($junctionClassFieldType)) != str_replace('"', '\'', $junctionTableFields[$junctionClassFieldName]))
+								{
+									$sqlJunction	.=	'MODIFY '.$junctionClassFieldName.' '.$junctionClassFieldType.',';
+									$changeJunction	=	true;
+								}
+							}
+						}
+
+						if($changeJunction)
+							Core::$current_db->exec('ALTER TABLE '.$tableName.'2'.$field_name .' '.substr($sqlJunction, 0, -1));
+					}
+					// Junction table does not exist, we'll create it
+					else
+					{
+						switch($php_type)
+						{
+							case Core::TYPE_ARRAY:
+								$otherClassName		=	current($sql_type);
+								$otherTableName		=	$otherClassName::getTableName();
+								$otherIdName		=	$otherClassName::getIdName();
+								$foreign_sql_reqs[]	=	Core::generateRequestForForeignFields($tableName, $otherTableName, $idName, $otherIdName, $field_name);
+								break;
+
+							case Core::TYPE_ASSOC_ARRAY:
+								$otherClassName			=	key($sql_type);
+								$supplementaryFields 	=	current($sql_type);
+								$otherTableName 		=	$otherClassName::getTableName();
+								$otherIdName			=	$otherClassName::getIdName();
+								$foreign_sql_reqs[]		=	Core::generateRequestForForeignFields($tableName, $otherTableName, $idName, $otherIdName, $field_name, $supplementaryFields);
+
+								break;
+						}
+					}
+				}
+				//Field is already present and is not an array: we check its SQL type!
 				else if(str_replace('"', '\'', strtoupper($sql_type)) != str_replace('"', '\'', $tableFields[$field_name]))
 				{
 					switch($php_type)
@@ -505,26 +564,6 @@ abstract class Entity implements iEntity
 							$change			=	true;
 
 							break;
-
-						case Core::TYPE_ARRAY:
-							$otherClassName		=	current($sql_type);
-							$otherTableName 	=	$otherClassName::getTableName();
-							$otherIdName		=	$otherClassName::getIdName();
-
-							$foreign_sql_reqs[]	=	Core::generateRequestForForeignFields($tableName, $otherTableName, $idName, $otherIdName, $field_name);
-
-							break;
-
-						case Core::TYPE_ASSOC_ARRAY:
-							$otherClassName			=	key($sql_type);
-							$supplementaryFields	=	current($sql_type);
-							$otherTableName 		=	$otherClassName::getTableName();
-							$otherIdName			=	$otherClassName::getIdName();
-
-							$foreign_sql_reqs[]	=	Core::generateRequestForForeignFields($tableName, $otherTableName, $idName, $otherIdName, $field_name, $supplementaryFields);
-
-							break;
-
 						default:
 							$sql	.=	'MODIFY '.$field_name.' '.$sql_type.',';
 							$change	=	true;
