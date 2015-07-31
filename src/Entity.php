@@ -403,6 +403,11 @@ abstract class Entity implements iEntity
 			$sql					=	'';
 			$foreign_sql_reqs		=	array();
 
+			if(!static::tableExists())
+			{
+				throw new \Exception("The table for " . $className . " does not exist, please call createTable() instead.");
+			}
+
 			$query	=	Core::$current_db->query('SHOW COLUMNS FROM '.$tableName);
 			$fields	=	$query->fetchAll(\PDO::FETCH_ASSOC);
 
