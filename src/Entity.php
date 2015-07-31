@@ -1005,7 +1005,7 @@ abstract class Entity implements iEntity
 	 * @static
 	 * @access public
 	 * @param Entity $obj Instance to persist
-	 * @return Entity The updated instance
+	 * @return int The number of affected rows
 	 * @throws \Exception
 	 */
 	final public static function update(Entity $obj)
@@ -1018,6 +1018,7 @@ abstract class Entity implements iEntity
 				$tableName	=	$className::getTableName();
 				$idName		=	$className::getIdName();
 				$objId		=	intval($obj->getId());
+				$affected	=	0;
 				$query		=	Core::$current_db->query('SELECT '.$idName.' FROM '.$tableName.' WHERE '.$idName.'='.$objId);
 
 				if($query->rowCount() > 0)
@@ -1029,11 +1030,13 @@ abstract class Entity implements iEntity
 						$set[]	=	$sql['fields'][$i].'='.$sql['values'][$i];
 
 					foreach($sql['foreign'] as $request)
-						Core::$current_db->exec($request);
+					{
+						$affected += Core::$current_db->exec($request);
+					}
 
-					Core::$current_db->exec('UPDATE '.$tableName.' SET '.implode(',',$set).' WHERE '.$idName.'='.$objId);
+					$affected += Core::$current_db->exec('UPDATE '.$tableName.' SET '.implode(',',$set).' WHERE '.$idName.'='.$objId);
 
-					return $className::getById($obj->getId());
+					return $affected;
 				}
 				throw new \Exception('Entity::update(Entity $obj) -> given $obj seems to not exist in the DB.');
 			}
