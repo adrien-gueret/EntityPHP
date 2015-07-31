@@ -151,7 +151,11 @@ final class EntityRequest
 					$is_many_2_many	=	false;
 
 				case Core::TYPE_ARRAY:
-					$className	=	current($sql_type);
+				case Core::TYPE_ASSOC_ARRAY:
+					if($php_type == Core::TYPE_ARRAY)
+						$className	=	current($sql_type);
+					else
+						$className	=	key($sql_type);
 
 					if( ! is_subclass_of($className,'EntityPHP\Entity'))
 						throw new \Exception('EntityRequest::'.$errorMethod.' : "'.$targetClassName.'.'.$prop.'" is not a subclass of Entity.');
@@ -397,6 +401,7 @@ final class EntityRequest
 					break;
 
 				case Core::TYPE_ARRAY:
+				case Core::TYPE_ASSOC_ARRAY:
 					//In case on many 2 many, we should not fetch property
 					continue 2;
 

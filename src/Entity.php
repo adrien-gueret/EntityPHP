@@ -74,9 +74,16 @@ abstract class Entity implements iEntity
 
 					break;
 
-				case Core::TYPE_ARRAY: //List of foreign keys
+				case Core::TYPE_ASSOC_ARRAY: //List of foreign keys with added properties
+					// We don't update those here
+					break;
 
-					$foreignClass	=	current($sql_type);
+				case Core::TYPE_ARRAY: //List of foreign keys
+				
+					if($php_type == Core::TYPE_ARRAY)
+						$foreignClass	=	current($sql_type);
+					else
+						$foreignClass	=	key($sql_type);
 
 					if($update)
 						$newId	=	$this->getId();
@@ -729,7 +736,12 @@ abstract class Entity implements iEntity
 
 		if(isset($fields[$prop]))
 		{
-			if((is_string($fields[$prop]) && class_exists($fields[$prop])) || (is_array($fields[$prop]) && class_exists($fields[$prop][0])))
+			$php_type	=	Core::getPHPType($fields[$prop]);
+
+			if	(	(is_string($fields[$prop]) && class_exists($fields[$prop])) || 
+					($php_type === Core::TYPE_ARRAY && class_exists($fields[$prop][0])) ||
+					($php_type === Core::TYPE_ASSOC_ARRAY && class_exists(key($fields[$prop])))
+				)
 			{
 				//One to many
 				if(is_string($fields[$prop]))
@@ -1082,6 +1094,107 @@ abstract class Entity implements iEntity
 		}
 		else
 			throw new \Exception('Entity::deleteMultiple(EntityArray $list) -> Only a subclass of Entity can call this method.');
+	}
+
+	/**
+	* Getter/setter for properties of a junction between this and another entity
+	* @access public
+	* @param string $field The field that joins the two entity
+	* @param Entity $otherEntity The other entity to join
+	* @param array $properties Properties to set
+	* @return Entity/array The list of properties if getting properties, the Entity this was called on otheriwse
+	*/
+	public function junctionProperties($field, $otherEntity, $properties = Core::UNDEFINED)
+	{
+		$className		=	get_class($this);
+		$otherClassName =	get_class($otherEntity);
+		$fields			=	static::__structure();
+
+		// Check that the asked field exists
+		if( ! isset($fields[$field]))
+			throw new \Exception('Entity::junctionProperties() : "'.$className.'" has no properties named "'.$field.'".');
+
+		$php_type	=	Core::getPHPType($fields[$field]);
+
+		// Check that the field is a junction table with properties
+		if($php_type !== Core::TYPE_ASSOC_ARRAY || ! class_exists(key($fields[$field])))
+			throw new \Exception('Entity::junctionProperties() : Field '. $field .' of '.$className.'" is not designed to be a junction table with properties.');
+
+		// Check that the other entity is of the right type
+		if(key($fields[$field]) != $otherClassName)
+			throw new \Exception('Entity::junctionProperties() : Expected entity of type '.key($fields[$field]).', got type '. $otherClassName .' instead.');
+
+		$tableName	=	static::getTableName();
+
+		// We want to get the properties
+		if($properties === Core::UNDEFINED)
+		{
+			$properties = array();
+
+			$query = Core::$current_db->query(
+			'SELECT * FROM '.$tableName.'2'.$field. ' WHERE id_'.$tableName.'='.$this->getId() . ' AND id_' . $field . '=' . $otherEntity->getId());
+
+			foreach($query->fetch(\PDO::FETCH_ASSOC) as $propertyName => $propertyValue)
+			{
+				// We don't care about IDs
+				if(substr($propertyName, 0, 3) !== 'id_')
+					$properties[$propertyName] = $propertyValue;
+			}
+
+			return $properties;
+		}
+		// We want to set the properties
+		else
+		{
+			$availableProperties = array_keys($fields[$field][$otherClassName]);
+
+			foreach($properties as $propertyName => $propertyValue)
+			{
+				// Check that the passed properties actually exist in the specification
+				if(! in_array($propertyName, $availableProperties))
+					throw new \Exception('Entity::junctionProperties() : Passed property '. $propertyName .' is not part of the '.$field.' field.');
+			}
+
+			// Check if the junction already exists
+			$query = Core::$current_db->query(
+				'SELECT NULL FROM '.$tableName.'2'.$field. ' WHERE id_'.$tableName.'='.$this->getId() . ' AND id_' . $field . '=' . $otherEntity->getId());
+
+			if($query->rowCount() > 0)
+			{
+				$set = [];
+
+				foreach($properties as $propertyName => $propertyValue)
+				{
+					// Get the type of the property
+					$php_type	=	Core::getPHPType($fields[$field][$otherClassName][$propertyName]);
+					$value = Core::convertValueForSql($php_type, $propertyValue);
+
+					$set[] = $propertyName . "=" . $value;
+				}
+
+				Core::$current_db->exec(
+					'UPDATE '.$tableName.'2'.$field. ' SET '.implode(',',$set).' WHERE id_'.$tableName.'='.$this->getId() . ' AND id_' . $field . '=' . $otherEntity->getId());
+			}
+			else
+			{
+				// Start with the IDs for the current entity and the other entity
+				$fieldsSQL = ['id_'.$tableName, 'id_' . $field];
+				$valuesSQL = [$this->getId(), $otherEntity->getId()];
+
+				// Construct the rest of the query
+				foreach($properties as $propertyName => $propertyValue)
+				{
+					// Get the type of the property
+					$php_type	=	Core::getPHPType($fields[$field][$otherClassName][$propertyName]);
+					$fieldsSQL[] = $propertyName;
+					$valuesSQL[] = Core::convertValueForSql($php_type, $propertyValue);
+				}
+
+				Core::$current_db->exec('INSERT INTO '.$tableName.'2'.$field. ' ('.implode(',',$fieldsSQL).') VALUES ('.implode(',',$valuesSQL).')');
+			}
+
+			return $this;
+		}
 	}
 
 	/**
