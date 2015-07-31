@@ -202,6 +202,66 @@ abstract class Core
 	}
 
 	/**
+	 * Return the value after making it suitable to the correct SQL type
+	 * @static
+	 * @access public
+	 * @param string $type The PHP type of the value to convert
+	 * @param string $value The value to convert
+	 * @return string The converted value
+	 */
+	final public static function convertValueForSql($type, $value)
+	{
+		switch($type)
+		{
+			case Core::TYPE_INTEGER:
+				return intval($value);
+
+			case Core::TYPE_FLOAT:
+				return floatval($value);
+				break;
+
+			case Core::TYPE_BOOLEAN:
+				return $value ? 1 : 0;
+
+			case Core::TYPE_STRING:
+				$temp			=	htmlspecialchars_decode($value, ENT_QUOTES);
+				$temp			=	htmlspecialchars($temp, ENT_QUOTES, Core::$current_db_is_utf8 ? 'UTF-8' : 'ISO-8859-1');
+				return '"'.$temp.'"';
+
+			case Core::TYPE_DATE:
+			case Core::TYPE_TIME:
+			case Core::TYPE_DATETIME:
+			case Core::TYPE_TIMESTAMP:
+			case Core::TYPE_YEAR:
+				$format			=	null;
+
+				if(empty($value)) {
+					return 'NULL';
+				}
+
+				switch($type)
+				{
+					case Core::TYPE_TIME:		$format	=	'H:i:s'; break;
+					case Core::TYPE_DATETIME:	$format	=	'Y-m-d H:i:s'; break;
+					case Core::TYPE_TIMESTAMP:	$format	=	'YmdHis'; break;
+					case Core::TYPE_YEAR:		$format	=	'Y'; break;
+					case Core::TYPE_DATE:		$format	=	'Y-m-d'; break;
+				}
+
+				return	'"'.(is_numeric($value)
+						? @date($format, $value)
+						: (
+						$value instanceof \DateTime
+							? $value->format($format)
+							: $value
+						)).'"';
+
+			default:
+				return $value;
+		}
+	}
+
+	/**
 	 * Create the database according to your Entities classes definition
 	 * @static
 	 * @access public

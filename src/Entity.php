@@ -42,60 +42,6 @@ abstract class Entity implements iEntity
 
 			switch($php_type)
 			{
-				case Core::TYPE_INTEGER:
-					$fieldsSQL[]	=	$field;
-					$valuesSQL[]	=	intval($this->$field);
-					break;
-
-				case Core::TYPE_FLOAT:
-					$fieldsSQL[]	=	$field;
-					$valuesSQL[]	=	floatval($this->$field);
-					break;
-
-				case Core::TYPE_BOOLEAN:
-					$fieldsSQL[]	=	$field;
-					$valuesSQL[]	=	$this->$field ? 1 : 0;
-					break;
-
-				case Core::TYPE_STRING:
-					$fieldsSQL[]	=	$field;
-					$temp			=	htmlspecialchars_decode($this->$field, ENT_QUOTES);
-					$temp			=	htmlspecialchars($temp, ENT_QUOTES, Core::$current_db_is_utf8 ? 'UTF-8' : 'ISO-8859-1');
-					$valuesSQL[]	=	'"'.$temp.'"';
-					break;
-
-				case Core::TYPE_DATE:
-				case Core::TYPE_TIME:
-				case Core::TYPE_DATETIME:
-				case Core::TYPE_TIMESTAMP:
-				case Core::TYPE_YEAR:
-					$fieldsSQL[]	=	$field;
-					$format			=	null;
-
-					if(empty($this->$field)) {
-						$valuesSQL[]	=	'NULL';
-						break;
-					}
-
-					switch($php_type)
-					{
-						case Core::TYPE_TIME:		$format	=	'H:i:s'; break;
-						case Core::TYPE_DATETIME:	$format	=	'Y-m-d H:i:s'; break;
-						case Core::TYPE_TIMESTAMP:	$format	=	'YmdHis'; break;
-						case Core::TYPE_YEAR:		$format	=	'Y'; break;
-						case Core::TYPE_DATE:		$format	=	'Y-m-d'; break;
-					}
-
-					$valuesSQL[]	=	'"'.(is_numeric($this->$field)
-							? @date($format, $this->$field)
-							: (
-							$this->$field instanceof \DateTime
-								? $this->$field->format($format)
-								: $this->$field
-							)).'"';
-
-					break;
-
 				case Core::TYPE_CLASS:
 					$className	=	$sql_type;
 
@@ -171,6 +117,12 @@ abstract class Entity implements iEntity
 					if( ! empty($temp))
 						$foreignSQL[]	=	'INSERT INTO '.$tableName.'2'.$field.' (id_'.$tableName.',id_'.$field.') VALUES '.implode(',', $temp);
 
+					break;
+
+				// Other types are treated by the core
+				default:
+					$fieldsSQL[] = $field;
+					$valuesSQL[] = Core::convertValueForSql($php_type, $this->$field);
 					break;
 			}
 		}
