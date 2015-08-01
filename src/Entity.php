@@ -79,11 +79,7 @@ abstract class Entity implements iEntity
 					break;
 
 				case Core::TYPE_ARRAY: //List of foreign keys
-				
-					if($php_type == Core::TYPE_ARRAY)
-						$foreignClass	=	current($sql_type);
-					else
-						$foreignClass	=	key($sql_type);
+					$foreignClass	=	current($sql_type);
 
 					if($update)
 						$newId	=	$this->getId();
@@ -209,19 +205,15 @@ abstract class Entity implements iEntity
 						$dependencies[] = $field;
 						break;
 
+					case Core::TYPE_ASSOC_ARRAY:
+						$dependencies[] = key($field);
+						break;
+
 					case Core::TYPE_ARRAY:
-						foreach ($field as $key => $value)
-						{
-							// Check if it's an associative array
-							if(is_int($key))
-								$dependencies[] = $value;
-							else
-								$dependencies[] = $key;
-						}
+						$dependencies[] = current($field);
 						break;
 				}
 			}
-
 			return array_unique($dependencies);
 		}
 		else
@@ -311,10 +303,11 @@ abstract class Entity implements iEntity
 						break;
 
 					case Core::TYPE_ASSOC_ARRAY:
-						$otherClassName			=	key($sql_type);
-						$supplementaryFields	=	current($sql_type);
+						$otherClassName         =	key($sql_type);
+						$supplementaryFields    =	current($sql_type);
 
-						$foreign_sql_reqs[]	=	Core::generateRequestForForeignFields($tableName, $otherClassName::getTableName(), $idName, $otherClassName::getIdName(), $field_name, $supplementaryFields);
+						$foreign_sql_reqs[]     =	Core::generateRequestForForeignFields(
+							$tableName, $otherClassName::getTableName(), $idName, $otherClassName::getIdName(), $field_name, $supplementaryFields);
 						break;
 
 					default:
@@ -362,7 +355,7 @@ abstract class Entity implements iEntity
 			$sql					=	'';
 			$foreign_sql_reqs		=	array();
 
-			if(!static::tableExists())
+			if( ! static::tableExists())
 			{
 				throw new \Exception("The table for " . $className . " does not exist, please call createTable() instead.");
 			}
@@ -444,7 +437,7 @@ abstract class Entity implements iEntity
 						$sqlJunction	=	'';
 
 						// Get the SQL structure
-						$queryJunctionField		=	Core::$current_db->query('SHOW COLUMNS FROM '.$tableName.'2'.$field_name);
+						$queryJunctionField 	=	Core::$current_db->query('SHOW COLUMNS FROM '.$tableName.'2'.$field_name);
 						$junctionTableFields	=	array();
 
 						$junctionClassFields = current($sql_type);
@@ -497,18 +490,19 @@ abstract class Entity implements iEntity
 						switch($php_type)
 						{
 							case Core::TYPE_ARRAY:
-								$otherClassName		=	current($sql_type);
-								$otherTableName		=	$otherClassName::getTableName();
-								$otherIdName		=	$otherClassName::getIdName();
+								$otherClassName 	=	current($sql_type);
+								$otherTableName 	=	$otherClassName::getTableName();
+								$otherIdName    	=	$otherClassName::getIdName();
 								$foreign_sql_reqs[]	=	Core::generateRequestForForeignFields($tableName, $otherTableName, $idName, $otherIdName, $field_name);
 								break;
 
 							case Core::TYPE_ASSOC_ARRAY:
-								$otherClassName			=	key($sql_type);
-								$supplementaryFields 	=	current($sql_type);
-								$otherTableName 		=	$otherClassName::getTableName();
-								$otherIdName			=	$otherClassName::getIdName();
-								$foreign_sql_reqs[]		=	Core::generateRequestForForeignFields($tableName, $otherTableName, $idName, $otherIdName, $field_name, $supplementaryFields);
+								$otherClassName         =	key($sql_type);
+								$supplementaryFields    =	current($sql_type);
+								$otherTableName         =	$otherClassName::getTableName();
+								$otherIdName            =	$otherClassName::getIdName();
+								$foreign_sql_reqs[]     =	Core::generateRequestForForeignFields(
+									$tableName, $otherTableName, $idName, $otherIdName, $field_name, $supplementaryFields);
 
 								break;
 						}
@@ -1018,6 +1012,7 @@ abstract class Entity implements iEntity
 	 */
 	final public static function delete(Entity $obj)
 	{
+		// TODO: What about occurences in junction tables?
 		$className	=	get_called_class();
 		if($className !== 'EntityPHP\Entity')
 		{
@@ -1106,13 +1101,13 @@ abstract class Entity implements iEntity
 	*/
 	public function junctionProperties($field, $otherEntity, $properties = Core::UNDEFINED)
 	{
-		$className		=	get_class($this);
+		$className      =	get_class($this);
 		$otherClassName =	get_class($otherEntity);
-		$fields			=	static::__structure();
+		$fields         =	static::__structure();
 
 		// Check that the asked field exists
 		if( ! isset($fields[$field]))
-			throw new \Exception('Entity::junctionProperties() : "'.$className.'" has no properties named "'.$field.'".');
+			throw new \Exception('Entity::junctionProperties() : "'.$className.'" has no property named "'.$field.'".');
 
 		$php_type	=	Core::getPHPType($fields[$field]);
 
@@ -1134,11 +1129,16 @@ abstract class Entity implements iEntity
 			$query = Core::$current_db->query(
 			'SELECT * FROM '.$tableName.'2'.$field. ' WHERE id_'.$tableName.'='.$this->getId() . ' AND id_' . $field . '=' . $otherEntity->getId());
 
-			foreach($query->fetch(\PDO::FETCH_ASSOC) as $propertyName => $propertyValue)
+			$result = $query->fetch(\PDO::FETCH_ASSOC);
+
+			if($result !== false)
 			{
-				// We don't care about IDs
-				if(substr($propertyName, 0, 3) !== 'id_')
-					$properties[$propertyName] = $propertyValue;
+				foreach($result as $propertyName => $propertyValue)
+				{
+					// We don't care about IDs
+					if(substr($propertyName, 0, 3) !== 'id_')
+						$properties[$propertyName] = $propertyValue;
+				}
 			}
 
 			return $properties;
@@ -1150,7 +1150,7 @@ abstract class Entity implements iEntity
 
 			foreach($properties as $propertyName => $propertyValue)
 			{
-				// Check that the passed properties actually exist in the specification
+				// Check that the passed properties actually exists in the specification
 				if(! in_array($propertyName, $availableProperties))
 					throw new \Exception('Entity::junctionProperties() : Passed property '. $propertyName .' is not part of the '.$field.' field.');
 			}
@@ -1159,6 +1159,7 @@ abstract class Entity implements iEntity
 			$query = Core::$current_db->query(
 				'SELECT NULL FROM '.$tableName.'2'.$field. ' WHERE id_'.$tableName.'='.$this->getId() . ' AND id_' . $field . '=' . $otherEntity->getId());
 
+			// Update
 			if($query->rowCount() > 0)
 			{
 				$set = [];
@@ -1167,14 +1168,15 @@ abstract class Entity implements iEntity
 				{
 					// Get the type of the property
 					$php_type	=	Core::getPHPType($fields[$field][$otherClassName][$propertyName]);
-					$value = Core::convertValueForSql($php_type, $propertyValue);
+					$value  	=	Core::convertValueForSql($php_type, $propertyValue);
 
-					$set[] = $propertyName . "=" . $value;
+					$set[]  	=	$propertyName . "=" . $value;
 				}
 
 				Core::$current_db->exec(
 					'UPDATE '.$tableName.'2'.$field. ' SET '.implode(',',$set).' WHERE id_'.$tableName.'='.$this->getId() . ' AND id_' . $field . '=' . $otherEntity->getId());
 			}
+			// Insert
 			else
 			{
 				// Start with the IDs for the current entity and the other entity
@@ -1185,9 +1187,9 @@ abstract class Entity implements iEntity
 				foreach($properties as $propertyName => $propertyValue)
 				{
 					// Get the type of the property
-					$php_type	=	Core::getPHPType($fields[$field][$otherClassName][$propertyName]);
-					$fieldsSQL[] = $propertyName;
-					$valuesSQL[] = Core::convertValueForSql($php_type, $propertyValue);
+					$php_type   	=	Core::getPHPType($fields[$field][$otherClassName][$propertyName]);
+					$fieldsSQL[]	=	$propertyName;
+					$valuesSQL[]	=	Core::convertValueForSql($php_type, $propertyValue);
 				}
 
 				Core::$current_db->exec('INSERT INTO '.$tableName.'2'.$field. ' ('.implode(',',$fieldsSQL).') VALUES ('.implode(',',$valuesSQL).')');

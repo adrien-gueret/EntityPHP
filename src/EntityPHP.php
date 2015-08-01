@@ -20,7 +20,7 @@ abstract class Core
 			TYPE_YEAR			=	'year',
 			TYPE_CLASS			=	'class',
 			TYPE_ARRAY			=	'array',
-			TYPE_ASSOC_ARRAY	=	'associative_array';
+			TYPE_ASSOC_ARRAY		=	'associative_array';
 
 	protected static $all_dbs			=	array();
 	public static $current_db			=	null;
@@ -285,6 +285,18 @@ abstract class Core
 		}
 	}
 
+	/**
+	 * Return the SQL request for creating a junction table
+	 * @static
+	 * @access public
+	 * @param string $tableName Name of the first table
+	 * @param string $refTableName Name of the second table
+	 * @param string $idName Name of the ID field for the first table
+	 * @param string $refIdName Name of the ID field for the second table
+	 * @param string $field Name of the field in the model representing the junction
+	 * @param array $supplementaryFields Optional, creates a junction table with properties
+	 * @return string The SQL request
+	 */
 	final public static function generateRequestForForeignFields($tableName, $refTableName, $idName, $refIdName, $field, $supplementaryFields = array())
 	{
 		// Check if we need to add supplementary fields
@@ -294,14 +306,14 @@ abstract class Core
 		{
 			foreach($supplementaryFields as $field_name => $sql_type)
 			{
-				$php_type	=	Core::getPHPType($sql_type);
+				$php_type		=	Core::getPHPType($sql_type);
 				$supplementaryFieldsSql	.=	$field_name.' '.$sql_type.', ';
 			}
 		}
 
 		$request	=	'CREATE TABLE '.$tableName.'2'.$field.' (id_'.$tableName.' INT(11) UNSIGNED NOT NULL,';
 		$request	.=	'id_'.$field.' INT(11) UNSIGNED NOT NULL, '.$supplementaryFieldsSql;
-		$request 	.=	'CONSTRAINT FOREIGN KEY fk_'.$tableName.'2'.$field;
+		$request	.=	'CONSTRAINT FOREIGN KEY fk_'.$tableName.'2'.$field;
 		$request	.=	'_'.$tableName.'$'.$tableName.'2'.$refTableName.' (id_'.$tableName.')  REFERENCES '.$tableName;
 		$request	.=	'('.$idName.') ON DELETE CASCADE, CONSTRAINT FOREIGN KEY fk_'.$tableName.'2'.$field.'_'.$field.'$';
 		$request	.=	$tableName.'2'.$refTableName.' (id_'.$field.') REFERENCES '.$refTableName.'('.$refIdName.') ON DELETE CASCADE) ';
