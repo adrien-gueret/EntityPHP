@@ -19,7 +19,8 @@ abstract class Core
 			TYPE_TIME			=	'time',
 			TYPE_YEAR			=	'year',
 			TYPE_CLASS			=	'class',
-			TYPE_ARRAY			=	'array';
+			TYPE_ARRAY			=	'array',
+			TYPE_ASSOC_ARRAY		=	'associative_array';
 
 	protected static $all_dbs			=	array();
 	public static $current_db			=	null;
@@ -157,7 +158,13 @@ abstract class Core
 	final public static function getPHPType($sqlType)
 	{
 		if(is_array($sqlType))
-			return self::TYPE_ARRAY;
+		{
+			// Check if it's an associative array
+			if(empty($sqlType) || is_int(key($sqlType)))
+				return self::TYPE_ARRAY;
+			else
+				return self::TYPE_ASSOC_ARRAY;
+		}
 
 		if((class_exists($sqlType) || class_exists('\\'.$sqlType)) && is_subclass_of($sqlType, 'EntityPHP\Entity'))
 			return self::TYPE_CLASS;
@@ -195,6 +202,66 @@ abstract class Core
 	}
 
 	/**
+	 * Return the value after making it suitable to the correct SQL type
+	 * @static
+	 * @access public
+	 * @param string $type The PHP type of the value to convert
+	 * @param string $value The value to convert
+	 * @return string The converted value
+	 */
+	final public static function convertValueForSql($type, $value)
+	{
+		switch($type)
+		{
+			case Core::TYPE_INTEGER:
+				return intval($value);
+
+			case Core::TYPE_FLOAT:
+				return floatval($value);
+				break;
+
+			case Core::TYPE_BOOLEAN:
+				return $value ? 1 : 0;
+
+			case Core::TYPE_STRING:
+				$temp			=	htmlspecialchars_decode($value, ENT_QUOTES);
+				$temp			=	htmlspecialchars($temp, ENT_QUOTES, Core::$current_db_is_utf8 ? 'UTF-8' : 'ISO-8859-1');
+				return '"'.$temp.'"';
+
+			case Core::TYPE_DATE:
+			case Core::TYPE_TIME:
+			case Core::TYPE_DATETIME:
+			case Core::TYPE_TIMESTAMP:
+			case Core::TYPE_YEAR:
+				$format			=	null;
+
+				if(empty($value)) {
+					return 'NULL';
+				}
+
+				switch($type)
+				{
+					case Core::TYPE_TIME:		$format	=	'H:i:s'; break;
+					case Core::TYPE_DATETIME:	$format	=	'Y-m-d H:i:s'; break;
+					case Core::TYPE_TIMESTAMP:	$format	=	'YmdHis'; break;
+					case Core::TYPE_YEAR:		$format	=	'Y'; break;
+					case Core::TYPE_DATE:		$format	=	'Y-m-d'; break;
+				}
+
+				return	'"'.(is_numeric($value)
+						? @date($format, $value)
+						: (
+						$value instanceof \DateTime
+							? $value->format($format)
+							: $value
+						)).'"';
+
+			default:
+				return $value;
+		}
+	}
+
+	/**
 	 * Create the database according to your Entities classes definition
 	 * @static
 	 * @access public
@@ -218,10 +285,35 @@ abstract class Core
 		}
 	}
 
-	final public static function generateRequestForForeignFields($tableName, $refTableName, $idName, $refIdName, $field)
+	/**
+	 * Return the SQL request for creating a junction table
+	 * @static
+	 * @access public
+	 * @param string $tableName Name of the first table
+	 * @param string $refTableName Name of the second table
+	 * @param string $idName Name of the ID field for the first table
+	 * @param string $refIdName Name of the ID field for the second table
+	 * @param string $field Name of the field in the model representing the junction
+	 * @param array $supplementaryFields Optional, creates a junction table with properties
+	 * @return string The SQL request
+	 */
+	final public static function generateRequestForForeignFields($tableName, $refTableName, $idName, $refIdName, $field, $supplementaryFields = array())
 	{
+		// Check if we need to add supplementary fields
+		$supplementaryFieldsSql = "";
+
+		if( ! empty($supplementaryFields) )
+		{
+			foreach($supplementaryFields as $field_name => $sql_type)
+			{
+				$php_type		=	Core::getPHPType($sql_type);
+				$supplementaryFieldsSql	.=	$field_name.' '.$sql_type.', ';
+			}
+		}
+
 		$request	=	'CREATE TABLE '.$tableName.'2'.$field.' (id_'.$tableName.' INT(11) UNSIGNED NOT NULL,';
-		$request	.=	'id_'.$field.' INT(11) UNSIGNED NOT NULL,CONSTRAINT FOREIGN KEY fk_'.$tableName.'2'.$field;
+		$request	.=	'id_'.$field.' INT(11) UNSIGNED NOT NULL, '.$supplementaryFieldsSql;
+		$request	.=	'CONSTRAINT FOREIGN KEY fk_'.$tableName.'2'.$field;
 		$request	.=	'_'.$tableName.'$'.$tableName.'2'.$refTableName.' (id_'.$tableName.')  REFERENCES '.$tableName;
 		$request	.=	'('.$idName.') ON DELETE CASCADE, CONSTRAINT FOREIGN KEY fk_'.$tableName.'2'.$field.'_'.$field.'$';
 		$request	.=	$tableName.'2'.$refTableName.' (id_'.$field.') REFERENCES '.$refTableName.'('.$refIdName.') ON DELETE CASCADE) ';
