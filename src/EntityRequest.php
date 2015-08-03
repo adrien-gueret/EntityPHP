@@ -152,7 +152,7 @@ final class EntityRequest
 
 				case Core::TYPE_ARRAY:
 				case Core::TYPE_ASSOC_ARRAY:
-					if($php_type == Core::TYPE_ARRAY)
+					if($php_type !== Core::TYPE_ARRAY)
 						$className	=	current($sql_type);
 					else
 						$className	=	key($sql_type);
