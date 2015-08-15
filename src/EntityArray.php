@@ -306,7 +306,7 @@ final class EntityArray implements \SeekableIterator, \ArrayAccess, \Countable
 	/**
 	 * Check if EntityArray is empty or not
 	 * @access public
-	 * @return EntityArray The calling EntityArray.
+	 * @return boolean True if the EntityArray is empty, False otherwise.
 	 */
 	public function isEmpty()
 	{
