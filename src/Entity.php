@@ -48,7 +48,7 @@ abstract class Entity implements iEntity
 					if( ! class_exists($className))
 						throw new \Exception('The field "'.$field.'" is defined as an instance of "'.$className.'" but this class does not exist.');
 
-					if( ! $update && ! ($this->$field instanceof $className))
+					if( ! ($this->$field instanceof $className))
 						$this->load($field);
 
 					if(empty($this->$field))
@@ -793,6 +793,10 @@ abstract class Entity implements iEntity
 
 			return $this->$prop;
 		}
+
+		// If we set the prop to null, also unset the ID for foreign properties
+		if($value === null && isset($this->{'id_'.$prop}))
+			unset($this->{'id_'.$prop});
 
 		$this->$prop	=	$value;
 		return $this;
