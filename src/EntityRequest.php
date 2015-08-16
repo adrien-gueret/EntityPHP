@@ -152,10 +152,10 @@ final class EntityRequest
 
 				case Core::TYPE_ARRAY:
 				case Core::TYPE_ASSOC_ARRAY:
-					if($php_type !== Core::TYPE_ARRAY)
-						$className	=	current($sql_type);
-					else
+					if($php_type === Core::TYPE_ASSOC_ARRAY)
 						$className	=	key($sql_type);
+					else
+						$className	=	current($sql_type);
 
 					if( ! is_subclass_of($className,'EntityPHP\Entity'))
 						throw new \Exception('EntityRequest::'.$errorMethod.' : "'.$targetClassName.'.'.$prop.'" is not a subclass of Entity.');
