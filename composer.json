@@ -1,0 +1,22 @@
+{
+  "name": "entityphp/entityphp",
+  "type": "library",
+  "description": "A basic and easy to use ORM built with and for PHP.",
+  "keywords": ["orm","mysql"],
+  "homepage": "https://github.com/adrien-gueret/EntityPHP",
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "Adrien Guéret",
+      "role": "Developer"
+    }
+  ],
+  "require": {
+    "php": ">=5.3.0"
+  },
+  "autoload": {
+    "psr-4": {
+      "EntityPHP\\": "src"
+    }
+  }
+}
