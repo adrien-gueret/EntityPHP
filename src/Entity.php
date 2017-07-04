@@ -912,7 +912,13 @@ abstract class Entity implements iEntity
 	 */
 	public static function addMultiple(Array $list)
 	{
-		$className	=	get_called_class();
+		$className	    =	get_called_class();
+		$totalInstances =   count($list);
+
+		if ($totalInstances === 0)
+        {
+            throw new \Exception('Entity::addMultiple(Array $list) -> try to insert 0 instances.');
+        }
 
 		if($className !== 'EntityPHP\Entity')
 		{
@@ -920,6 +926,8 @@ abstract class Entity implements iEntity
 			$id_name		=	$className::getIdName();
 			$sql_request	=	null;
 			$foreignSQL		=	array();
+
+			$list   =   array_values($list);
 
 			foreach($list as $instance)
 			{
@@ -940,7 +948,7 @@ abstract class Entity implements iEntity
 
 			$instances	=	$className::createRequest()
 								->orderBy($id_name.' DESC')
-								->getOnly(count($list))
+								->getOnly(max($totalInstances, 2))
 								->exec()
 								->reverse();
 
