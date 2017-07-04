@@ -16,7 +16,7 @@
   },
   "autoload": {
     "psr-4": {
-      "EntityPHP\\": "src"
+      "EntityPHP\\": "src/"
     }
   }
 }
