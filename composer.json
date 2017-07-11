@@ -3,6 +3,7 @@
   "type": "library",
   "description": "A basic and easy to use ORM built with and for PHP.",
   "keywords": ["orm","mysql"],
+  "version": "1.0.0",
   "homepage": "https://github.com/adrien-gueret/EntityPHP",
   "license": "MIT",
   "authors": [
