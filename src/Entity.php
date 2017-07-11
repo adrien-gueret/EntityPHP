@@ -946,11 +946,16 @@ abstract class Entity implements iEntity
 
 			Core::$current_db->exec(substr($sql_request, 0, -1));
 
-			$instances	=	$className::createRequest()
-								->orderBy($id_name.' DESC')
-								->getOnly(max($totalInstances, 2))
-								->exec()
-								->reverse();
+			$requestedInstances	=	$className::createRequest()
+                                        ->orderBy($id_name.' DESC')
+                                        ->getOnly($totalInstances)
+                                        ->exec();
+
+			$requestedInstances =   $requestedInstances instanceof EntityArray
+                                        ? $requestedInstances
+                                        : new EntityArray($className, [$requestedInstances]);
+
+			$instances  =   $requestedInstances->reverse();
 
 			foreach($instances as $index => $instance)
 			{
